@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="elegant-dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0f15">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Life RPG">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+    <title>Life RPG Dashboard</title>
+    <link rel="stylesheet" href="css/themes.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="layout-container">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div>
+            <h1 class="page-title">Life RPG</h1>
+            <div class="header-quote" id="dailyQuote">Loading daily quote...</div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-secondary" id="cloudStatusBtn" onclick="syncWithCloud(true)" title="Sync now or configure Cloud Sync">☁️ Local</button>
+            <button class="btn-secondary" id="btnTogglePage" onclick="togglePages()">🕰️ Timeline</button>
+            <button class="btn-secondary" onclick="openDailyLog()">📅 Records</button>
+            <button class="btn-secondary" onclick="openSettings()">⚙️ Settings</button>
+            <button class="btn-secondary" onclick="exportData()">Export</button>
+            <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Import</button>
+            <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
+        </div>
+    </div>
+
+    <!-- PAGE 1: DASHBOARD -->
+    <div id="dashboardPage">
+
+        <!-- ROW 1: ACHIEVEMENTS -->
+        <div class="grid-top">
+            <div class="panel" data-chunk="character">
+                <div class="panel-header" onclick="handlePanelHeaderClick('character', event)">
+                    <span class="panel-title">Character Profile</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span id="charCollapsedSummary" class="collapsed-summary violet-text"></span>
+                        <button class="collapse-btn" onclick="togglePanelCollapse('character', event)" title="Expand / Collapse">▾</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="stat-row">
+                        <span class="card-title">Wandering Scholar</span>
+                        <span class="stat-value violet">Lv.<span id="charLevel">1</span></span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Total XP</span>
+                        <span id="charXP" class="mono-num">0</span>
+                    </div>
+                    <div class="progress-track"><div id="charProgress" class="progress-fill violet"></div></div>
+                </div>
+            </div>
+
+            <div class="panel" data-chunk="wallet">
+                <div class="panel-header wallet-header" onclick="handlePanelHeaderClick('wallet', event)">
+                    <div class="wallet-header-top">
+                        <span class="panel-title">
+                            <span class="title-full">Wallet Balance</span>
+                            <span class="title-short">Wallet</span>
+                        </span>
+                        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;" onclick="event.stopPropagation()">
+                            <select id="walletMetricSelect" class="mini-select" onchange="changeWalletCollapsedMetric(this.value)" title="Extra metric shown when collapsed">
+                                <option value="earning">Today Earned</option>
+                                <option value="spent">Today Spent</option>
+                                <option value="month">Issued Month</option>
+                                <option value="none">Balance Only</option>
+                            </select>
+                            <button class="collapse-btn" onclick="togglePanelCollapse('wallet', event)" title="Expand / Collapse">▾</button>
+                        </div>
+                    </div>
+                    <div id="walletCollapsedSummary" class="collapsed-summary wallet-collapsed-row"></div>
+                </div>
+                <div class="panel-body">
+                    <div class="stat-row">
+                        <span class="card-title">Available</span>
+                        <span class="stat-value gold"><span id="walletBalance">0.00</span> HK$</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Spent Today</span>
+                        <span id="spentTodayDisplay" class="red-text mono-num">0.00 HK$</span>
+                    </div>
+                    <div class="stat-row" style="margin-top:4px;">
+                        <span class="stat-label">Pending Today</span>
+                        <span id="todayEarnings" class="gold-text mono-num">0.0 / 160</span>
+                    </div>
+                    <div class="progress-track"><div id="todayProgress" class="progress-fill gold"></div></div>
+                    <div class="stat-row" style="margin-top:4px;">
+                        <span class="stat-label">Issued Month</span>
+                        <span id="monthEarnings" class="mono-num">0.0 / 4500</span>
+                    </div>
+                    <div class="progress-track"><div id="monthProgress" class="progress-fill gold"></div></div>
+                </div>
+            </div>
+
+            <div class="panel" data-chunk="focusGoal">
+                <div class="panel-header" onclick="handlePanelHeaderClick('focusGoal', event)">
+                    <span class="panel-title">Today's Focus Goal</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span id="focusGoalCollapsedSummary" class="collapsed-summary teal-text"></span>
+                        <button class="collapse-btn" onclick="togglePanelCollapse('focusGoal', event)" title="Expand / Collapse">▾</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="stat-row">
+                        <span class="card-title">Accumulated</span>
+                        <span class="stat-value" id="todayFocus">0h 0m</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Base (<span id="baseGoalDisplay">4</span>h)</span>
+                        <span id="focusBaseProgressText" class="mono-num">0%</span>
+                    </div>
+                    <div class="progress-track"><div id="focusBaseProgress" class="progress-fill teal"></div></div>
+                    <div class="stat-row" style="margin-top:4px;">
+                        <span class="stat-label">Stretch (8h)</span>
+                        <span id="focusStretchProgressText" class="mono-num">0%</span>
+                    </div>
+                    <div class="progress-track"><div id="focusStretchProgress" class="progress-fill sage"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 2: FOCUS CHAMBER -->
+        <div class="grid-center">
+            <div class="panel" data-chunk="focusChamber">
+                <div class="panel-header" onclick="handlePanelHeaderClick('focusChamber', event)">
+                    <span class="panel-title">Focus Chamber</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span id="focusStatusText" style="color:var(--text-secondary); font-size:var(--fs-xsmall); font-weight:500;">Deep Work · Ready</span>
+                        <button class="collapse-btn" onclick="togglePanelCollapse('focusChamber', event)" title="Expand / Collapse">▾</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="focus-body">
+                        <input type="text" id="focusDesc" class="timer-input" placeholder="What are you focusing on?">
+                        <div class="timer-display" id="timerDisplay">00:00:00</div>
+                        <div class="focus-controls">
+                            <button class="btn-primary" id="btnTimerStart" onclick="startTimer()">Start Focus</button>
+                            <button class="btn-primary" id="btnTimerResume" onclick="startTimer()" style="display:none;">Resume Focus</button>
+                            <button class="btn-pause" id="btnTimerPause" onclick="pauseTimer()" style="display:none;">Pause</button>
+                            <button class="btn-finish" id="btnTimerFinish" onclick="finishTimer(event)" style="display:none;">Finish Session</button>
+                        </div>
+                        <div style="font-size:var(--fs-xsmall); color:var(--text-secondary); margin-top:20px;">
+                            Just Do It: ≥3m = <span class="gold-text">+3 XP</span> · Deep Work: 40m = <span class="gold-text">+15 XP</span> (+3 XP / extra 10m)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 3: TO-DO LIST & DAILY QUESTS -->
+        <div class="grid-middle">
+            <div class="panel equal-panel" data-chunk="todo">
+                <div class="panel-header" onclick="handlePanelHeaderClick('todo', event)">
+                    <span class="panel-title">To-Do List</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span class="pill-badge" id="todoRewardBadge" onclick="openSettings()" title="Click to change To-Do reward in Settings">+1 HK$ / task</span>
+                        <button class="btn-tertiary" onclick="autoSortTodos()" title="Sort Alphabetically">Aa Sort</button>
+                        <button class="collapse-btn" onclick="togglePanelCollapse('todo', event)" title="Expand / Collapse">▾</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div style="display:flex; gap:8px; margin-bottom: 14px;">
+                        <input type="text" id="todoInput" placeholder="Add a task..." style="flex:1; min-width:0;" onkeypress="if(event.key==='Enter') addTodo()">
+                        <button class="btn-secondary" onclick="addTodo()">Add</button>
+                    </div>
+                    <div class="scroll-area" id="todoList"></div>
+                </div>
+            </div>
+
+            <div class="panel equal-panel" data-chunk="dailyQuests">
+                <div class="panel-header" onclick="handlePanelHeaderClick('dailyQuests', event)">
+                    <span class="panel-title">Daily Quests</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span id="questDateTag" style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);"></span>
+                        <button class="btn-tertiary" onclick="refreshDailyQuests()" title="Reset today's Daily Quests counts">↺</button>
+                        <button class="collapse-btn" onclick="togglePanelCollapse('dailyQuests', event)" title="Expand / Collapse">▾</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="scroll-area">
+                        <div class="quest-category-label">Essentials</div>
+                        <div id="questListEssentials"></div>
+
+                        <div class="quest-category-label">Scholar's Path</div>
+                        <div id="questListScholar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 4: STUDY RECORDS & WALLET LEDGER -->
+        <div class="grid-bottom">
+            <div class="panel equal-panel-sm" data-chunk="studyRecords">
+                <div class="panel-header" onclick="handlePanelHeaderClick('studyRecords', event)">
+                    <span class="panel-title">Study Records</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span style="font-size:11px; color:var(--text-secondary);">Today</span>
+                        <button class="collapse-btn" onclick="togglePanelCollapse('studyRecords', event)" title="Expand / Collapse">▾</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div id="studyRecordList" class="scroll-area" style="margin-bottom:14px;"></div>
+                    <div style="display:flex; gap:8px; border-top:1px solid var(--border-subtle); padding-top:14px;">
+                        <input type="text" id="manualStudyDesc" placeholder="Manual log..." style="flex:1; min-width:0;">
+                        <input type="number" id="manualStudyMins" placeholder="Mins" style="width:74px;">
+                        <button class="btn-secondary" onclick="addManualStudyRecord()">Add</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel equal-panel-sm" data-chunk="walletLedger">
+                <div class="panel-header" onclick="handlePanelHeaderClick('walletLedger', event)">
+                    <span class="panel-title">Wallet Ledger</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span id="ledgerDateTag" style="font-size:11px; font-family:var(--font-mono); color:var(--text-secondary);"></span>
+                        <button class="btn-tertiary" onclick="clearWalletLedgerView()" title="Clear visible ledger entries (keeps balance)">🧹</button>
+                        <button class="collapse-btn" onclick="togglePanelCollapse('walletLedger', event)" title="Expand / Collapse">▾</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div id="ledgerList" class="scroll-area" style="margin-bottom:14px;"></div>
+                    <div style="display:flex; gap:8px; border-top:1px solid var(--border-subtle); padding-top:14px;">
+                        <input type="text" id="expDesc" placeholder="Expense..." style="flex:1; min-width:0;">
+                        <input type="number" id="expAmt" placeholder="HK$" step="0.1" style="width:82px;">
+                        <button class="btn-gold-outline" onclick="recordExpense()">Spend</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 5: BLIND BOX -->
+        <div class="grid-bottom" style="margin-bottom: 0;">
+            <div class="panel equal-panel-bb" data-chunk="blindBox">
+                <div class="panel-header" onclick="handlePanelHeaderClick('blindBox', event)">
+                    <span class="panel-title">🎁 Blind Box Challenge</span>
+                    <button class="collapse-btn" onclick="togglePanelCollapse('blindBox', event)" title="Expand / Collapse">▾</button>
+                </div>
+                <div class="panel-body">
+                    <p style="font-size:var(--fs-xsmall); color:var(--text-secondary); margin:0 0 10px 0;">
+                        Just do it! Overcome friction, fear, or laziness. Reward: 0.6 – 8 HK$
+                    </p>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <input type="text" id="bbDesc" placeholder="Action (e.g. Start drafting section 1)">
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" id="bbBefore" placeholder="Feeling before? (Optional)" style="flex:1; min-width:0;">
+                            <input type="text" id="bbAfter" placeholder="Feeling after? (Optional)" style="flex:1; min-width:0;">
+                        </div>
+                        <button class="btn-gold-outline" style="margin-top:4px; padding:9px;" onclick="drawBlindBox(event)">Do It & Draw Blind Box</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel equal-panel-bb" data-chunk="blindBoxHistory">
+                <div class="panel-header" onclick="handlePanelHeaderClick('blindBoxHistory', event)">
+                    <span class="panel-title">🏆 Blind Box History</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span style="font-size:11px; color:var(--text-secondary);">Today</span>
+                        <button class="collapse-btn" onclick="togglePanelCollapse('blindBoxHistory', event)" title="Expand / Collapse">▾</button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div id="blindBoxList" class="scroll-area"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- PAGE 2: TIMELINE / CLOCK -->
+    <div id="timelinePage">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+                <h2 style="font-family:var(--font-heading); font-size:26px;">Weekly Activity Timeline</h2>
+                <p style="color:var(--text-secondary); font-size:var(--fs-small); margin:4px 0 0 0;">
+                    Focus sessions (gold bars) and timestamped logs (blue dots) over the last 7 days.
+                </p>
+            </div>
+            <button class="btn-secondary" onclick="togglePages()">← Back to Dashboard</button>
+        </div>
+        <div id="timelineContent"></div>
+    </div>
+
+    <div class="footer">
+        LIFE RPG v0 · A tool for finding your rhythm, not a source of pressure.<br>
+        Designed by HAHA
+    </div>
+
+</div>
+
+<!-- FLOATING MOBILE QUICK REORDER BAR (Long-press any panel header on mobile) -->
+<div id="quickReorderBar">
+    <span style="font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+        Reorder: <span id="quickReorderLabel" class="gold-text"></span>
+    </span>
+    <div style="display:flex; gap:6px; flex-shrink:0;">
+        <button class="btn-secondary" style="padding:6px 12px;" onclick="moveActiveChunk(-1)">↑ Up</button>
+        <button class="btn-secondary" style="padding:6px 12px;" onclick="moveActiveChunk(1)">↓ Down</button>
+        <button class="btn-primary" style="padding:6px 12px; font-size:13px;" onclick="closeQuickReorderBar()">Done</button>
+    </div>
+</div>
+
+<!-- MODAL: SETTINGS -->
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 style="font-family:var(--font-heading); font-size:26px;">⚙️ System Settings</h2>
+            <button class="modal-close" onclick="closeSettings()">&times;</button>
+        </div>
+
+        <div style="margin-bottom:24px;">
+            <div class="section-title">Appearance</div>
+            <div class="form-row">
+                <label>Theme:</label>
+                <select id="setTheme" onchange="previewTheme(this.value)">
+                    <optgroup label="Dark Themes">
+                        <option value="elegant-dark">Elegant Dark (Default)</option>
+                        <option value="classic">Classic Dark</option>
+                        <option value="soft-glass">Soft Glass Dark</option>
+                        <option value="ocean-blue">Ocean Blue</option>
+                        <option value="nord">Nord (Muted Dark)</option>
+                        <option value="cyberpunk">Cyberpunk</option>
+                    </optgroup>
+                    <optgroup label="Gradient Themes">
+                        <option value="midnight-gradient">Midnight Gradient</option>
+                        <option value="sunset-gradient">Sunset Gradient</option>
+                    </optgroup>
+                    <optgroup label="Light & Soft Themes">
+                        <option value="morandi">Morandi (Muted)</option>
+                        <option value="light-minimal">Light Minimal</option>
+                        <option value="mint-light">Mint Light</option>
+                        <option value="lavender-light">Lavender Light</option>
+                        <option value="warm-paper">Warm Paper</option>
+                    </optgroup>
+                </select>
+
+                <label style="margin-left:14px;">Font Size:</label>
+                <select id="setFontSize" onchange="previewFontSize(this.value)">
+                    <option value="normal">Normal</option>
+                    <option value="large">Large</option>
+                    <option value="xlarge">Extra Large</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-bottom:24px;">
+            <div class="section-title">Economy & Goals</div>
+            <div class="form-row">
+                <label>Daily Cap (HK$):</label>
+                <input type="number" id="setDailyCap" style="width:84px;">
+                <label style="margin-left:12px;">Monthly Cap (HK$):</label>
+                <input type="number" id="setMonthCap" style="width:94px;">
+                <label style="margin-left:12px;">Base Focus Goal (h):</label>
+                <input type="number" id="setBaseFocus" style="width:68px;">
+            </div>
+        </div>
+
+        <div style="margin-bottom:24px; padding:14px; background:var(--bg-card); border-radius:10px; border:1px solid var(--border-subtle);">
+            <div class="section-title" style="margin-bottom:10px;">To-Do Completion Reward</div>
+            <div class="form-row" style="margin-bottom:0;">
+                <label>Reward Mode:</label>
+                <select id="setTodoRewardMode" onchange="toggleTodoRewardInput()">
+                    <option value="fixed">Fixed Amount (HK$)</option>
+                    <option value="blindbox">🎁 Blind Box (0.6 – 8 HK$)</option>
+                </select>
+                <span id="todoFixedAmtGroup" style="display:inline-flex; align-items:center; gap:8px; margin-left:10px;">
+                    <label>Amount per task:</label>
+                    <input type="number" id="setTodoRewardAmount" step="0.5" min="0" style="width:76px;">
+                    <span style="color:var(--text-secondary);">HK$</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- CHUNK VISIBLE ROWS -->
+        <div style="margin-bottom:24px; padding:14px; background:var(--bg-card); border-radius:10px; border:1px solid var(--border-subtle);">
+            <div class="section-title" style="margin-bottom:6px;">
+                <span>📏 Chunk Display Rows (PC & Mobile)</span>
+            </div>
+            <div style="font-size:var(--fs-xsmall); color:var(--text-secondary); margin-bottom:12px;">
+                Set visible rows (2–30) for each list panel. On desktop, paired side-by-side panels automatically match the taller one.
+            </div>
+            <div class="form-row" style="margin-bottom:6px;">
+                <label>To-Do List:</label>
+                <input type="number" id="setRowsTodo" min="2" max="30" style="width:66px;">
+                <label style="margin-left:10px;">Daily Quests:</label>
+                <input type="number" id="setRowsQuests" min="2" max="30" style="width:66px;">
+                <label style="margin-left:10px;">Study Records:</label>
+                <input type="number" id="setRowsStudy" min="2" max="30" style="width:66px;">
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+                <label>Wallet Ledger:</label>
+                <input type="number" id="setRowsLedger" min="2" max="30" style="width:66px;">
+                <label style="margin-left:10px;">Blind Box History:</label>
+                <input type="number" id="setRowsBBHist" min="2" max="30" style="width:66px;">
+            </div>
+        </div>
+
+        <!-- MOBILE ORDER & DEFAULT COLLAPSE -->
+        <div style="margin-bottom:24px; padding:14px; background:var(--bg-card); border-radius:10px; border:1px solid var(--border-subtle);">
+            <div class="section-title" style="margin-bottom:6px;">
+                <span>📱 Mobile Chunk Order & Default Collapse</span>
+                <button class="btn-tertiary" onclick="resetDefaultMobileLayout()">Reset Defaults</button>
+            </div>
+            <div style="font-size:var(--fs-xsmall); color:var(--text-secondary); margin-bottom:10px;">
+                On mobile, you can also long-press any panel header to bring up the quick Up/Down reorder bar.
+            </div>
+            <div id="settingsMobileOrderList" style="max-height: 260px; overflow-y: auto;"></div>
+        </div>
+
+        <div style="margin-bottom:24px;">
+            <div class="section-title">
+                <span>Daily Quest Manager</span>
+                <button class="btn-secondary" style="font-size:12px; padding:4px 10px;" onclick="addTempQuest()">+ Add Quest</button>
+            </div>
+            <div style="overflow-x:auto; padding-bottom:6px;">
+                <div style="display:grid; grid-template-columns:44px 1.8fr 1fr 56px 56px 64px 56px 36px; gap:8px; font-size:11px; color:var(--text-secondary); padding:0 8px 6px 8px; min-width:640px; text-transform:uppercase;">
+                    <span>Icon</span><span>Quest Name</span><span>Category</span><span>XP</span><span>Limit</span><span>Input</span><span>Order</span><span></span>
+                </div>
+                <div id="settingsQuestList" style="max-height: 300px; overflow-y: auto;"></div>
+            </div>
+        </div>
+
+        <div style="margin-bottom:24px; padding:16px; background:var(--bg-card); border-radius:10px; border:1px solid var(--border-subtle);">
+            <div class="section-title" style="margin-bottom:8px;">
+                <span>☁️ Cloud Sync (PC ↔ Mobile)</span>
+                <span style="font-size:11px; font-weight:400; text-transform:none;">Supabase Free Sync · 20s Auto Check</span>
+            </div>
+            <div style="font-size:var(--fs-xsmall); color:var(--text-secondary); margin-bottom:12px;">
+                Enter the same Project URL, Anon Key, and Sync Passphrase on all devices to sync automatically (leave blank for Local-only mode).
+            </div>
+            <div class="form-row">
+                <label style="width:125px;">Project URL:</label>
+                <input type="text" id="setCloudUrl" placeholder="https://xxxx.supabase.co" style="flex:1; min-width:200px;">
+            </div>
+            <div class="form-row">
+                <label style="width:125px;">Anon / Pub Key:</label>
+                <input type="text" id="setCloudKey" placeholder="sb_publishable_... or eyJhbGci..." style="flex:1; min-width:200px;">
+            </div>
+            <div class="form-row">
+                <label style="width:125px;">Sync Passphrase:</label>
+                <input type="text" id="setCloudSyncId" placeholder="Custom ID, e.g. haha-rpg-2026" style="flex:1; min-width:200px;">
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+                <button class="btn-secondary" onclick="saveCloudConfigFromUI()">💾 Save & Connect</button>
+                <button class="btn-secondary" onclick="pushToCloud(true)">↑ Force Upload Local</button>
+                <button class="btn-secondary" onclick="pullFromCloud(true, true)">↓ Force Pull Cloud</button>
+            </div>
+        </div>
+
+        <div style="padding:14px; border:1px dashed rgba(248,81,73,0.45); border-radius:10px; margin-bottom:22px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+                <div style="color:var(--red-error); font-weight:600; font-size:var(--fs-small);">Danger Zone</div>
+                <div style="color:var(--text-secondary); font-size:var(--fs-xsmall);">Erase today's earnings, expenses, focus time, and quest progress.</div>
+            </div>
+            <button class="btn-danger" onclick="resetTodayData()">Reset Today's Progress</button>
+        </div>
+
+        <div style="text-align:right; display:flex; justify-content:flex-end; gap:10px; border-top:1px solid var(--border-subtle); padding-top:16px;">
+            <button class="btn-secondary" onclick="closeSettings()">Cancel</button>
+            <button class="btn-primary" style="padding:9px 20px; font-size:var(--fs-small);" onclick="saveSettings()">Save Configuration</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: DAILY LOG -->
+<div id="dailyLogModal" class="modal">
+    <div class="modal-content" style="max-width: 860px;">
+        <div class="modal-header">
+            <h2 style="font-family:var(--font-heading); font-size:26px;">📅 Daily Records History</h2>
+            <button class="modal-close" onclick="closeDailyLog()">&times;</button>
+        </div>
+        <div style="max-height: 62vh; overflow-y: auto;">
+            <table class="table-history">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Focus (m)</th>
+                        <th>Quests</th>
+                        <th>Earned</th>
+                        <th>Spent</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody id="dailyLogTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: EDIT RECORD -->
+<div id="editModal" class="modal">
+    <div class="modal-content" style="max-width: 440px;">
+        <div class="modal-header">
+            <h3 id="editModalTitle" style="font-size:18px;">Edit Record</h3>
+            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <input type="hidden" id="editType">
+        <input type="hidden" id="editId">
+        <input type="hidden" id="editLinkedQuestId">
+        <div class="form-row" id="editDescGroup">
+            <label style="width:86px;">Desc:</label>
+            <input type="text" id="editDesc" style="flex:1;">
+        </div>
+        <div class="form-row" id="editAmtGroup">
+            <label style="width:86px;" id="editAmtLabel">Amount:</label>
+            <input type="number" id="editAmt" style="flex:1;" step="0.1">
+        </div>
+        <div class="form-row" id="editTimeGroup">
+            <label style="width:86px;">Time:</label>
+            <input type="text" id="editTime" placeholder="HH:MM" style="flex:1;">
+        </div>
+        <div style="margin-top: 22px; display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn-secondary" onclick="closeEditModal()">Cancel</button>
+            <button class="btn-primary" style="padding:8px 18px; font-size:var(--fs-small);" onclick="saveEditModal()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST & CONFETTI -->
+<div id="toastContainer"></div>
+<canvas id="confetti-canvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999;"></canvas>
+
+<script src="js/config.js"></script>
+<script src="js/helpers.js"></script>
+<script src="js/state.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/timer.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/views.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
